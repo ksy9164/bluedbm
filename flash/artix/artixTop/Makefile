@@ -1,6 +1,6 @@
 ROOT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
-BSC_FLAGS = -keep-fires -show-schedule -aggressive-conditions -wait-for-license
+BSC_FLAGS = -keep-fires -show-schedule -aggressive-conditions 
 BUILD_DIR = build
 V_DIR = $(BUILD_DIR)/verilog
 B_DIR = $(BUILD_DIR)/obj

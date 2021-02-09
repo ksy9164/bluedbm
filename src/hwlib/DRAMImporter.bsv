@@ -3,7 +3,7 @@ import DDR3Sim::*;
 `endif
 import XilinxVC707DDR3::*;
 import Xilinx       :: *;
-import XilinxCells ::*;
+/* import XilinxCells ::*; */
 import Clocks :: *;
 import DefaultValue    :: *;
 
