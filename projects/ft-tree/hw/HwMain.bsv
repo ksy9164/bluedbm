@@ -38,14 +38,28 @@ module mkHwMain#(PcieUserIfc pcie, DRAMUserIfc dram, Vector#(2,FlashCtrlUser) fl
 	DualFlashManagerOrderedIfc flashuser <- mkDualFlashManagerOrdered(flashes); 
 
 	Vector#(2, SerializerIfc#(256,2)) serial_usr <- replicateM(mkSerializer);
+	FIFO#(Bit#(256)) inputQ <- mkFIFO;
+
+	FIFO#(Bit#(32)) hashPcieQ <- mkFIFO;
+	DeSerializerIfc#(32, 9) hashSerialQ <- mkDeSerializer;
 
 	Reg#(Bit#(1)) handle <- mkReg(0);
 
 	Reg#(Bit#(32)) outputCnt <- mkReg(0);
     DeSerializerIfc#(128, 2) out_deserial <- mkDeSerializer;
+    FIFO#(Bit#(129)) subHashQ <- mkFIFO;	
+    FIFO#(Bit#(256)) outputQ <- mkFIFO;	
+    FIFO#(Bit#(152)) hashQ <- mkFIFO;	
+	Reg#(Bit#(1)) hash_handle <- mkReg(0);
 
-	rule readFlashData;
+    rule readFlashData;
 		Bit#(256) word <- flashuser.readWord;
+		inputQ.enq(word);
+	endrule
+
+	rule putInput;
+	    inputQ.deq;
+	    let word = inputQ.first;
 		serial_usr[handle].put(word);
 		handle <= handle + 1;
 	endrule
@@ -121,10 +135,16 @@ module mkHwMain#(PcieUserIfc pcie, DRAMUserIfc dram, Vector#(2,FlashCtrlUser) fl
     rule writeFlashUser;
         let d <- out_deserial.get;
         outputCnt <= outputCnt + 1;
-        flashuser.writeWord(d);
+        outputQ.enq(d);
+    endrule
+
+    rule outputToFlash;
+        outputQ.deq;
+        flashuser.writeWord(outputQ.first);
     endrule
 
 	SyncFIFOIfc#(IOWrite) pcieWriteQ <- mkSyncFIFOToCC(2,pcieclk,pcierst);
+	FIFO#(IOWrite) writeQ <- mkFIFO;
 	SyncFIFOIfc#(IOReadReq) pcieReadQ <- mkSyncFIFOToCC(2,pcieclk,pcierst);
     SyncFIFOIfc#(Tuple2#(IOReadReq, Bit#(32))) pcieRespQ <- mkSyncFIFOFromCC(2,pcieclk);	
 
@@ -150,9 +170,14 @@ module mkHwMain#(PcieUserIfc pcie, DRAMUserIfc dram, Vector#(2,FlashCtrlUser) fl
 		pcie.dataSend(tpl_1(r_), tpl_2(r_));
 	endrule
 
-	rule getCmd;
+	rule getCmdPass;
 		pcieWriteQ.deq;
-		let w = pcieWriteQ.first;
+		writeQ.enq(pcieWriteQ.first);
+	endrule
+
+	rule getCmd;
+	    writeQ.deq;
+		let w = writeQ.first;
 
 		let a = w.addr;
 		let d = w.data;
@@ -163,7 +188,35 @@ module mkHwMain#(PcieUserIfc pcie, DRAMUserIfc dram, Vector#(2,FlashCtrlUser) fl
 
 			if ( cmd == 0 ) flashuser.readPage(d);
 			else if ( cmd == 1 ) flashuser.writePage(d);
+			else if ( cmd == 2 ) hashPcieQ.enq(d);
 			else flashuser.eraseBlock(d);
 		end 	
+	endrule
+
+	rule hashSerial;
+	    hashPcieQ.deq;
+	    hashSerialQ.put(hashPcieQ.first);
+	endrule
+
+	rule hashGet;
+	    Bit#(288) d <- hashSerialQ.get;
+	    hash_handle <= hash_handle + 1;
+	    if (hash_handle == 0) begin
+	        hashQ.enq(truncate(d));
+	    end else begin
+	        subHashQ.enq(truncate(d));
+	    end
+	endrule
+
+	rule hashIn;
+	    hashQ.deq;
+	    pipe[0].putHashTable(hashQ.first);
+	    pipe[1].putHashTable(hashQ.first);
+	endrule
+
+	rule subhashIn;
+	    subHashQ.deq;
+	    pipe[0].putSubHashTable(subHashQ.first);
+	    pipe[1].putSubHashTable(subHashQ.first);
 	endrule
 endmodule
