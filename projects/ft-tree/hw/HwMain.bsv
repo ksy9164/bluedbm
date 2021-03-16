@@ -47,9 +47,9 @@ module mkHwMain#(PcieUserIfc pcie, DRAMUserIfc dram, Vector#(2,FlashCtrlUser) fl
 
 	Reg#(Bit#(32)) outputCnt <- mkReg(0);
     DeSerializerIfc#(128, 2) out_deserial <- mkDeSerializer;
-    FIFO#(Bit#(129)) subHashQ <- mkFIFO;	
+    FIFOLI#(Bit#(129), 2) subHashQ <- mkFIFOLI;	
     FIFO#(Bit#(256)) outputQ <- mkFIFO;	
-    FIFO#(Bit#(152)) hashQ <- mkFIFO;	
+    FIFOLI#(Bit#(152),2 ) hashQ <- mkFIFOLI;	
 	Reg#(Bit#(1)) hash_handle <- mkReg(0);
 
     rule readFlashData;
@@ -144,7 +144,7 @@ module mkHwMain#(PcieUserIfc pcie, DRAMUserIfc dram, Vector#(2,FlashCtrlUser) fl
     endrule
 
 	SyncFIFOIfc#(IOWrite) pcieWriteQ <- mkSyncFIFOToCC(2,pcieclk,pcierst);
-	FIFO#(IOWrite) writeQ <- mkFIFO;
+	FIFOLI#(IOWrite, 2) writeQ <- mkFIFOLI;
 	SyncFIFOIfc#(IOReadReq) pcieReadQ <- mkSyncFIFOToCC(2,pcieclk,pcierst);
     SyncFIFOIfc#(Tuple2#(IOReadReq, Bit#(32))) pcieRespQ <- mkSyncFIFOFromCC(2,pcieclk);	
 
