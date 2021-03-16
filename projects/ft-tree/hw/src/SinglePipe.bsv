@@ -33,10 +33,9 @@ module mkSinglePipe(SinglePipeIfc);
     LZAHIfc#(128, 10) lzah_decompressor <- mkLZAH128_10;
     Vector#(8 ,TokenizerIfc) tokenizer <- replicateM(mkTokenizer);
     Reg#(Bit#(3)) tokenizer_input_handle <- mkReg(0);
-    Vector#(2, FIFO#(Bit#(2))) tokenizerSignalQ <- replicateM(mkSizedBRAMFIFO(5000));
     Vector#(2, Reg#(Bit#(2))) tokenizer_output_handle <- replicateM(mkReg(0));
     Vector#(2, Reg#(Bit#(2))) tokenizer_hash_handle <- replicateM(mkReg(0));
-    Vector#(8, FIFO#(Bit#(128))) outputQ <- replicateM(mkSizedBRAMFIFO(100)); 
+    Vector#(8, FIFOLI#(Bit#(128), 2)) outputQ <- replicateM(mkFIFOLI); 
     Vector#(8, Reg#(Bit#(1))) output_merge_handle <- replicateM(mkReg(0));
 
     Vector#(8, FIFO#(Tuple2#(Bit#(2), Bit#(128)))) tokenQ <- replicateM(mkSizedBRAMFIFO(500));

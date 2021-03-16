@@ -1,6 +1,7 @@
 package Merger;
 
 import FIFO::*;
+import FIFOLI::*;
 import Vector::*;
 
 typedef Bit#(128) Input_t;
@@ -15,7 +16,7 @@ endinterface
 module mkMerger (MergerIfc);
     Input_t spl = 10;
 
-    Vector#(2, FIFO#(Input_t)) inQ <- replicateM(mkFIFO);
+    Vector#(2, FIFOLI#(Input_t, 2)) inQ <- replicateM(mkFIFOLI);
     FIFO#(Input_t) outQ <- mkFIFO;
     Reg#(Bit#(1)) handle <- mkReg(0);
     Reg#(Bit#(1)) mergeFlag <- mkReg(0);
